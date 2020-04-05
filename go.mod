@@ -1,6 +1,6 @@
-module git.supremind.info/products/atom/didiyunclient
+module git.supremind.info/products/atom/didiyun-client
 
-go 1.13
+go 1.14
 
 require (
 	github.com/didiyun/didiyun-go-sdk v0.0.0-20191213104633-ce66f9d9ef5a
