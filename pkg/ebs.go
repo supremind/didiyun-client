@@ -9,6 +9,10 @@ import (
 	"k8s.io/klog"
 )
 
+const (
+	ebsNotFoundMsg = "找不到指定EBS"
+)
+
 type EbsClient interface {
 	Create(ctx context.Context, regionID, zoneID, name, typ string, sizeGB int64) (string, error)
 	Delete(ctx context.Context, ebsUUID string) error
@@ -105,6 +109,9 @@ func (t *ebsClient) Delete(ctx context.Context, ebsUUID string) error {
 		return e
 	}
 	if !job.Success { // not found etc.
+		if job.Result == ebsNotFoundMsg {
+			return fmt.Errorf("failed to delete ebs: %w", NotFound)
+		}
 		return fmt.Errorf("failed to delete ebs: %s", job.Result)
 	}
 	return nil

@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"git.supremind.info/products/atom/didiyunclient/pkg"
+	"git.supremind.info/products/atom/didiyun-client/pkg"
 )
 
 func ExampleCreateDelete_Ebs() {

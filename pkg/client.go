@@ -3,6 +3,7 @@ package pkg
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"time"
 
@@ -18,6 +19,10 @@ import (
 const (
 	endpoint     = "open.didiyunapi.com:8080"
 	pollInterval = 3 * time.Second
+)
+
+var (
+	NotFound = errors.New("not found")
 )
 
 type Client interface {
