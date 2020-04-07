@@ -89,8 +89,8 @@ func (t *client) Slb(vpcUuid string) SlbClient {
 
 type helper interface {
 	getDc2UUIDByName(ctx context.Context, name string) (string, error)
+	getDc2UUIDsByNames(ctx context.Context, vpcUuid string, names []string) ([]string, error)
 	waitForJob(ctx context.Context, info *base.JobInfo, regionID, zoneID string) (*base.JobInfo, error)
-	listDc2(ctx context.Context, vpcUuid string) ([]*compute.Dc2Info, error)
 }
 
 func (t *client) getDc2UUIDByName(ctx context.Context, name string) (string, error) {
@@ -116,6 +116,42 @@ func (t *client) getDc2UUIDByName(ctx context.Context, name string) (string, err
 	return "", fmt.Errorf("dc2 %s is not found", name)
 }
 
+func (t *client) getDc2UUIDsByNames(ctx context.Context, vpcUuid string, names []string) ([]string, error) {
+	if len(names) == 0 {
+		return nil, nil
+	}
+
+	klog.V(4).Infof("getting dc2 uuids by names")
+	req := &compute.ListDc2Request{
+		Start:    0,
+		Limit:    maxDc2,
+		Simplify: true,
+	}
+	if vpcUuid != "" {
+		req.Condition = &compute.ListDc2Condition{VpcUuids: []string{vpcUuid}}
+	}
+	resp, e := t.dc2.ListDc2(ctx, req)
+	if e != nil {
+		return nil, fmt.Errorf("list dc2 error %w", e)
+	}
+	if resp.Error.Errno != 0 {
+		return nil, fmt.Errorf("list dc2 error %s (%d)", resp.Error.Errmsg, resp.Error.Errno)
+	}
+
+	var dc2Uuids []string
+	name2Uuid := make(map[string]string, len(resp.Data))
+	for _, n := range resp.Data {
+		name2Uuid[n.GetName()] = n.GetDc2Uuid()
+	}
+	for _, m := range names {
+		id, ok := name2Uuid[m]
+		if ok {
+			dc2Uuids = append(dc2Uuids, id)
+		}
+	}
+	return dc2Uuids, nil
+}
+
 func (t *client) waitForJob(ctx context.Context, info *base.JobInfo, regionID, zoneID string) (*base.JobInfo, error) {
 	for {
 		if info.Done {
@@ -136,24 +172,4 @@ func (t *client) waitForJob(ctx context.Context, info *base.JobInfo, regionID, z
 		}
 		info = resp.Data[0]
 	}
-}
-
-func (t *client) listDc2(ctx context.Context, vpcUuid string) ([]*compute.Dc2Info, error) {
-	klog.V(4).Infof("listing dc2")
-	req := &compute.ListDc2Request{
-		Start:    0,
-		Limit:    maxDc2,
-		Simplify: true,
-	}
-	if vpcUuid != "" {
-		req.Condition = &compute.ListDc2Condition{VpcUuids: []string{vpcUuid}}
-	}
-	resp, e := t.dc2.ListDc2(ctx, req)
-	if e != nil {
-		return nil, fmt.Errorf("list dc2 error %w", e)
-	}
-	if resp.Error.Errno != 0 {
-		return nil, fmt.Errorf("list dc2 error %s (%d)", resp.Error.Errmsg, resp.Error.Errno)
-	}
-	return resp.Data, nil
 }

@@ -25,9 +25,10 @@ var (
 
 type SlbClient interface {
 	Create(ctx context.Context, regionID, zoneID, name string, bandwidth int64) (string, error)
-	CheckExistence(ctx context.Context, uuid string) (bool, error)
+	GetExternalIP(ctx context.Context, uuid string) (string, error)
 	Delete(ctx context.Context, uuid string) error
 	SyncListeners(ctx context.Context, uuid string, listeners []*Listener, dc2Names []string) error
+	SyncListenerMembers(ctx context.Context, uuid string, dc2Names []string) error
 }
 
 type slbClient struct {
@@ -72,22 +73,19 @@ func (t *slbClient) Create(ctx context.Context, regionID, zoneID, name string, b
 	return job.ResourceUuid, nil
 }
 
-func (t *slbClient) CheckExistence(ctx context.Context, uuid string) (bool, error) {
-	klog.V(4).Infof("checking slb uuid %s", uuid)
+func (t *slbClient) GetExternalIP(ctx context.Context, uuid string) (string, error) {
+	klog.V(4).Infof("getting external ip of slb uuid %s", uuid)
 	req := &compute.GetSLBByUuidRequest{
 		SlbUuid: uuid,
 	}
 	resp, e := t.cli.GetSLBByUuid(ctx, req)
 	if e != nil {
-		return false, fmt.Errorf("get slb error %w", e)
+		return "", fmt.Errorf("get slb error %w", e)
 	}
 	if resp.Error.Errno != 0 {
-		if resp.Error.Errno == 4000 { // TODO: set not found code
-			return false, nil
-		}
-		return false, fmt.Errorf("get slb error %s (%d)", resp.Error.Errmsg, resp.Error.Errno)
+		return "", fmt.Errorf("get slb error %s (%d)", resp.Error.Errmsg, resp.Error.Errno)
 	}
-	return true, nil
+	return resp.Data[0].Beip.Ip, nil
 }
 
 func (t *slbClient) Delete(ctx context.Context, uuid string) error {
@@ -125,6 +123,10 @@ type Listener struct {
 }
 
 func (t *slbClient) SyncListeners(ctx context.Context, uuid string, listeners []*Listener, dc2Names []string) error {
+	if len(listeners) == 0 {
+		return nil
+	}
+
 	klog.V(4).Infof("syncing listeners of slb %s", uuid)
 	req := &compute.ListSLBListenerRequest{
 		Start:     0,
@@ -141,7 +143,6 @@ func (t *slbClient) SyncListeners(ctx context.Context, uuid string, listeners []
 
 	existLis := make(map[string]*compute.ListSLBListenerResponse_Data, len(resp.Data))
 	for _, l := range resp.Data {
-		fmt.Printf("%+v\n", *l)
 		existLis[l.Name] = l
 	}
 
@@ -153,7 +154,7 @@ func (t *slbClient) SyncListeners(ctx context.Context, uuid string, listeners []
 		if ok { // update
 			l.Uuid = target.SlbListenerUuid
 
-			// all members ports is same
+			// all members ports are same
 			if len(target.MemberPorts) > 0 && l.Dc2Port != target.MemberPorts[0] {
 				// cuz all members of listener need update, delete & create for updating
 				deleteLis = append(deleteLis, &Listener{Uuid: l.Uuid})
@@ -171,21 +172,14 @@ func (t *slbClient) SyncListeners(ctx context.Context, uuid string, listeners []
 		deleteLis = append(deleteLis, &Listener{Uuid: l.SlbListenerUuid})
 	}
 
+	if e := t.deleteListeners(ctx, deleteLis); e != nil {
+		return e
+	}
+
 	if len(createLis) > 0 {
-		dc2List, e := t.listDc2(ctx, t.vpcUuid)
+		dc2Uuids, e := t.getDc2UUIDsByNames(ctx, t.vpcUuid, dc2Names)
 		if e != nil {
 			return e
-		}
-		var dc2Uuids []string
-		name2Uuid := make(map[string]string, len(dc2List))
-		for _, n := range dc2List {
-			name2Uuid[n.GetName()] = n.GetDc2Uuid()
-		}
-		for _, m := range dc2Names {
-			id, ok := name2Uuid[m]
-			if ok {
-				dc2Uuids = append(dc2Uuids, id)
-			}
 		}
 
 		if e := t.createListeners(ctx, uuid, createLis, dc2Uuids); e != nil {
@@ -194,10 +188,6 @@ func (t *slbClient) SyncListeners(ctx context.Context, uuid string, listeners []
 	}
 
 	if e := t.updateListeners(ctx, updateLis); e != nil {
-		return e
-	}
-
-	if e := t.deleteListeners(ctx, deleteLis); e != nil {
 		return e
 	}
 
@@ -320,6 +310,137 @@ func (t *slbClient) deleteListeners(ctx context.Context, listeners []*Listener) 
 	}
 	if !job.Success {
 		return fmt.Errorf("failed to delete listeners of slb: %s", job.Result)
+	}
+	return nil
+}
+
+func (t *slbClient) SyncListenerMembers(ctx context.Context, uuid string, dc2Names []string) error {
+	klog.V(4).Infof("syncing listener members of slb %s", uuid)
+	dc2Uuids, e := t.getDc2UUIDsByNames(ctx, t.vpcUuid, dc2Names)
+	if e != nil {
+		return e
+	}
+
+	req := &compute.ListSLBListenerRequest{
+		Start:     0,
+		Limit:     maxSlbListeners,
+		Condition: &compute.ListSLBListenerRequest_Condition{SlbUuid: uuid},
+	}
+	resp, e := t.cli.ListSLBListener(ctx, req)
+	if e != nil {
+		return fmt.Errorf("list listeners of slb error %w", e)
+	}
+	if resp.Error.Errno != 0 {
+		return fmt.Errorf("list listeners of slb error %s (%d)", resp.Error.Errmsg, resp.Error.Errno)
+	}
+
+	for _, l := range resp.Data {
+		req := &compute.ListPoolMembersRequest{
+			Start:     0,
+			Limit:     maxDc2,
+			Condition: &compute.ListPoolMembersRequest_Condition{PoolUuid: l.PoolUuid},
+		}
+		respMem, e := t.cli.ListPoolMembers(ctx, req)
+		if e != nil {
+			return fmt.Errorf("list pool members of slb listener error %w", e)
+		}
+		if respMem.Error.Errno != 0 {
+			return fmt.Errorf("list pool members of slb listener error %s (%d)", resp.Error.Errmsg, resp.Error.Errno)
+		}
+
+		existMem := make(map[string]*compute.PoolMemberInfo, len(respMem.Data))
+		for _, m := range respMem.Data {
+			existMem[m.Dc2.Dc2Uuid] = m
+		}
+
+		var createMem []string // dc2 uuid
+		var deleteMem []string // slb mem uuid
+		for _, n := range dc2Uuids {
+			_, ok := existMem[n]
+			if !ok {
+				createMem = append(createMem, n)
+			}
+			delete(existMem, n)
+		}
+		for _, m := range existMem {
+			deleteMem = append(deleteMem, m.SlbMemberUuid)
+		}
+
+		if len(l.MemberPorts) > 0 { // no previous members, skip this time
+			if e := t.addListenerMembers(ctx, l.PoolUuid, createMem, l.MemberPorts[0]); e != nil {
+				return e
+			}
+		} else {
+			klog.V(3).Infof("empty members ports, skip adding pool members of listener %s of slb %s", l.Name, uuid)
+		}
+
+		if e := t.deleteListenerMembers(ctx, deleteMem); e != nil {
+			return e
+		}
+	}
+	return nil
+}
+
+func (t *slbClient) addListenerMembers(ctx context.Context, poolUuid string, dc2Uuid []string, port int64) error {
+	if len(dc2Uuid) == 0 {
+		return nil
+	}
+
+	klog.V(4).Infof("adding members of slb pool %s", poolUuid)
+	req := &compute.AddSLBMemberToPoolRequest{
+		PoolUuid: poolUuid,
+	}
+	for _, m := range dc2Uuid {
+		req.Members = append(req.Members, &compute.MemberInputInfo{
+			Dc2Uuid: m,
+			Port:    port,
+			Weight:  100,
+		})
+	}
+	resp, e := t.cli.AddSLBMemberToPool(ctx, req)
+	if e != nil {
+		return fmt.Errorf("add members of slb pool error %w", e)
+	}
+	if resp.Error.Errno != 0 {
+		return fmt.Errorf("add members of slb pool error %s (%d)", resp.Error.Errmsg, resp.Error.Errno)
+	}
+
+	job, e := t.waitForJob(ctx, resp.Data[0], "", "")
+	if e != nil {
+		return e
+	}
+	if !job.Success {
+		return fmt.Errorf("failed to add members of slb pool: %s", job.Result)
+	}
+	return nil
+}
+
+func (t *slbClient) deleteListenerMembers(ctx context.Context, memUuid []string) error {
+	if len(memUuid) == 0 {
+		return nil
+	}
+
+	klog.V(4).Infof("deleting members of slb pool")
+	req := &compute.DeleteSLBMemberRequest{}
+	for _, m := range memUuid {
+		req.Members = append(req.Members, &compute.DeleteSLBMemberRequest_Member{
+			SlbMemberUuid: m,
+		})
+	}
+	resp, e := t.cli.DeleteSLBMember(ctx, req)
+	if e != nil {
+		return fmt.Errorf("delete members of slb pool error %w", e)
+	}
+	if resp.Error.Errno != 0 {
+		return fmt.Errorf("delete members of slb pool error %s (%d)", resp.Error.Errmsg, resp.Error.Errno)
+	}
+
+	job, e := t.waitForJob(ctx, resp.Data[0], "", "")
+	if e != nil {
+		return e
+	}
+	if !job.Success {
+		return fmt.Errorf("failed to delete members of slb pool: %s", job.Result)
 	}
 	return nil
 }

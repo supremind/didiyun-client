@@ -16,7 +16,7 @@ func ExampleCreateDelete_Ebs() {
 		log.Fatalln(e)
 	}
 	ebs := c.Ebs()
-	id, e := ebs.Create(ctx, "gz", "gz02", "Example_Ebs", "SSD", 20) // name is not unique
+	id, e := ebs.Create(ctx, "gz", "gz02", "ExampleCreateDelete_Ebs", "SSD", 20) // name is not unique
 	if e != nil {
 		log.Fatalln(e)
 	}
