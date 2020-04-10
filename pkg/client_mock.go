@@ -13,7 +13,7 @@ func (t *mockClient) Ebs() EbsClient {
 	}
 }
 
-func (t *mockClient) Elb() ElbClient {
+func (t *mockClient) Slb(vpcUuid string) SlbClient {
 	// TODO: impl
 	return nil
 }

@@ -19,6 +19,11 @@ import (
 const (
 	endpoint     = "open.didiyunapi.com:8080"
 	pollInterval = 3 * time.Second
+	maxDc2       = 500
+	maxSlb       = 1000
+
+	ebsNotFoundMsg = "找不到指定EBS"
+	slbNotFoundMsg = "<TODO>"
 )
 
 var (
@@ -27,7 +32,7 @@ var (
 
 type Client interface {
 	Ebs() EbsClient
-	Elb() ElbClient
+	Slb(vpcUuid string) SlbClient
 }
 
 type Config struct {
@@ -74,23 +79,25 @@ func (t *client) Ebs() EbsClient {
 	}
 }
 
-func (t *client) Elb() ElbClient {
-	return &elbClient{
-		cli:    compute.NewCommonClient(t.conn),
-		helper: t,
+func (t *client) Slb(vpcUuid string) SlbClient {
+	return &slbClient{
+		cli:     compute.NewSLBClient(t.conn),
+		vpcUuid: vpcUuid,
+		helper:  t,
 	}
 }
 
 type helper interface {
 	getDc2UUIDByName(ctx context.Context, name string) (string, error)
 	waitForJob(ctx context.Context, info *base.JobInfo, regionID, zoneID string) (*base.JobInfo, error)
+	listDc2(ctx context.Context, vpcUuid string) ([]*compute.Dc2Info, error)
 }
 
 func (t *client) getDc2UUIDByName(ctx context.Context, name string) (string, error) {
 	klog.V(4).Infof("getting dc2 uuid by %s", name)
 	req := &compute.ListDc2Request{
 		Start:     0,
-		Limit:     100,
+		Limit:     maxDc2,
 		Simplify:  true,
 		Condition: &compute.ListDc2Condition{Dc2Name: name},
 	}
@@ -129,4 +136,24 @@ func (t *client) waitForJob(ctx context.Context, info *base.JobInfo, regionID, z
 		}
 		info = resp.Data[0]
 	}
+}
+
+func (t *client) listDc2(ctx context.Context, vpcUuid string) ([]*compute.Dc2Info, error) {
+	klog.V(4).Infof("listing dc2")
+	req := &compute.ListDc2Request{
+		Start:    0,
+		Limit:    maxDc2,
+		Simplify: true,
+	}
+	if vpcUuid != "" {
+		req.Condition = &compute.ListDc2Condition{VpcUuids: []string{vpcUuid}}
+	}
+	resp, e := t.dc2.ListDc2(ctx, req)
+	if e != nil {
+		return nil, fmt.Errorf("list dc2 error %w", e)
+	}
+	if resp.Error.Errno != 0 {
+		return nil, fmt.Errorf("list dc2 error %s (%d)", resp.Error.Errmsg, resp.Error.Errno)
+	}
+	return resp.Data, nil
 }

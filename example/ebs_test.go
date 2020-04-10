@@ -11,8 +11,7 @@ import (
 
 func ExampleCreateDelete_Ebs() {
 	ctx := context.Background()
-	token := "" // TODO: set your api token
-	c, e := pkg.New(&pkg.Config{Token: token, Timeout: 5 * time.Second})
+	c, e := pkg.New(&pkg.Config{Token: apiToken, Timeout: 5 * time.Second})
 	if e != nil {
 		log.Fatalln(e)
 	}
