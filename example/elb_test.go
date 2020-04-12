@@ -2,13 +2,11 @@ package example
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"log"
 	"time"
 
 	"git.supremind.info/products/atom/didiyun-client/pkg"
-	"k8s.io/klog"
 )
 
 func ExampleCreateDelete_Slb() {
@@ -29,12 +27,6 @@ func ExampleCreateDelete_Slb() {
 
 	fmt.Println("Slb created & deleted ok")
 	// Output: Slb created & deleted ok
-}
-
-func init() {
-	klogFlags := flag.NewFlagSet("klog", flag.ExitOnError)
-	klog.InitFlags(klogFlags)
-	klogFlags.Set("v", "5")
 }
 
 func ExampleSyncListeners_Slb() {

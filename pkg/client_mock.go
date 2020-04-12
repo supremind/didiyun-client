@@ -14,6 +14,7 @@ func (t *mockClient) Ebs() EbsClient {
 }
 
 func (t *mockClient) Slb(vpcUuid string) SlbClient {
-	// TODO: impl
-	return nil
+	return &mockSlbClient{
+		slb: make(map[string]*slbInfo),
+	}
 }
