@@ -9,10 +9,6 @@ import (
 	"k8s.io/klog"
 )
 
-const (
-	ebsNotFoundMsg = "找不到指定EBS"
-)
-
 type EbsClient interface {
 	Create(ctx context.Context, regionID, zoneID, name, typ string, sizeGB int64) (string, error)
 	Delete(ctx context.Context, ebsUUID string) error

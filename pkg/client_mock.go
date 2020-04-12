@@ -13,7 +13,8 @@ func (t *mockClient) Ebs() EbsClient {
 	}
 }
 
-func (t *mockClient) Elb() ElbClient {
-	// TODO: impl
-	return nil
+func (t *mockClient) Slb(vpcUuid string) SlbClient {
+	return &mockSlbClient{
+		slb: make(map[string]*slbInfo),
+	}
 }
