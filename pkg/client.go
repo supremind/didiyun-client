@@ -23,7 +23,7 @@ const (
 	maxSlb       = 1000
 
 	ebsNotFoundMsg = "找不到指定EBS"
-	slbNotFoundMsg = "<TODO>"
+	slbNotFoundMsg = "删除SLB失败" // TODO: not consistent
 )
 
 var (

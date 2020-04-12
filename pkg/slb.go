@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/didiyun/didiyun-go-sdk/base/v1"
@@ -123,8 +124,8 @@ type Listener struct {
 }
 
 func (t *slbClient) SyncListeners(ctx context.Context, uuid string, listeners []*Listener, dc2Names []string) error {
-	if len(listeners) == 0 {
-		return nil
+	if uuid == "" { // if uuid is empty, all slb will be listed which is not expected
+		return errors.New("empty slb uuid")
 	}
 
 	klog.V(4).Infof("syncing listeners of slb %s", uuid)
@@ -149,7 +150,12 @@ func (t *slbClient) SyncListeners(ctx context.Context, uuid string, listeners []
 	var createLis []*Listener
 	var updateLis []*Listener
 	var deleteLis []*Listener
-	for _, l := range listeners {
+	for _, l := range listeners { // empty listeners will remove all existing listeners
+		if l.Name == "" {
+			klog.V(3).Infof("skip creating lb listener with empty name, uuid %s", uuid)
+			continue
+		}
+
 		target, ok := existLis[l.Name]
 		if ok { // update
 			l.Uuid = target.SlbListenerUuid
@@ -315,6 +321,10 @@ func (t *slbClient) deleteListeners(ctx context.Context, listeners []*Listener) 
 }
 
 func (t *slbClient) SyncListenerMembers(ctx context.Context, uuid string, dc2Names []string) error {
+	if uuid == "" { // if uuid is empty, all slb will be listed which is not expected
+		return errors.New("empty slb uuid")
+	}
+
 	klog.V(4).Infof("syncing listener members of slb %s", uuid)
 	dc2Uuids, e := t.getDc2UUIDsByNames(ctx, t.vpcUuid, dc2Names)
 	if e != nil {
@@ -353,9 +363,9 @@ func (t *slbClient) SyncListenerMembers(ctx context.Context, uuid string, dc2Nam
 			existMem[m.Dc2.Dc2Uuid] = m
 		}
 
-		var createMem []string // dc2 uuid
-		var deleteMem []string // slb mem uuid
-		for _, n := range dc2Uuids {
+		var createMem []string       // dc2 uuid
+		var deleteMem []string       // slb mem uuid
+		for _, n := range dc2Uuids { // empty dc2Uuids will remove all existing members
 			_, ok := existMem[n]
 			if !ok {
 				createMem = append(createMem, n)
@@ -366,11 +376,11 @@ func (t *slbClient) SyncListenerMembers(ctx context.Context, uuid string, dc2Nam
 			deleteMem = append(deleteMem, m.SlbMemberUuid)
 		}
 
-		if len(l.MemberPorts) > 0 { // no previous members, skip this time
+		if len(l.MemberPorts) > 0 {
 			if e := t.addListenerMembers(ctx, l.PoolUuid, createMem, l.MemberPorts[0]); e != nil {
 				return e
 			}
-		} else {
+		} else { // no previous members, skip this time
 			klog.V(3).Infof("empty members ports, skip adding pool members of listener %s of slb %s", l.Name, uuid)
 		}
 
