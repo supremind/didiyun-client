@@ -49,8 +49,9 @@ func (t *slbClient) Create(ctx context.Context, regionID, zoneID, name string, b
 		VpcUuid:      t.vpcUuid,
 		AddressType:  "internet",
 		Eip: &compute.CreateSLBRequest_Eip{
-			Name:      name,
-			Bandwidth: bandwidth, // Mbps
+			Name:           name,
+			Bandwidth:      bandwidth, // Mbps
+			ChargeWithFlow: true,
 		},
 	}
 	resp, e := t.cli.CreateSLB(ctx, req)
@@ -84,6 +85,9 @@ func (t *slbClient) GetExternalIP(ctx context.Context, uuid string) (string, err
 		return "", fmt.Errorf("get slb error %w", e)
 	}
 	if resp.Error.Errno != 0 {
+		if resp.Error.Errno == slbNotFoundCode {
+			return "", fmt.Errorf("get slb error: %w", NotFound)
+		}
 		return "", fmt.Errorf("get slb error %s (%d)", resp.Error.Errmsg, resp.Error.Errno)
 	}
 	return resp.Data[0].Beip.Ip, nil
