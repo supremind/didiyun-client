@@ -21,6 +21,10 @@ func ExampleCreateDelete_Slb() {
 		log.Fatalln(e)
 	}
 
+	if _, e = slb.GetExternalIP(ctx, id); e != nil {
+		log.Fatalln(e)
+	}
+
 	if e = slb.Delete(ctx, id); e != nil {
 		log.Fatalln(e)
 	}

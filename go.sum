@@ -29,6 +29,8 @@ github.com/didiyun/didiyun-go-sdk v0.0.0-20191213104633-ce66f9d9ef5a h1:7AFD8mm4
 github.com/didiyun/didiyun-go-sdk v0.0.0-20191213104633-ce66f9d9ef5a/go.mod h1:J0ltcwoCBFxKo6d6kFEkMzEpQ+jY3e4FSEbWJIpm9Dw=
 github.com/didiyun/didiyun-go-sdk v0.0.0-20200407082324-9230d53e143f h1:IYb9IeGBwXyzlNhdut4mNCjorldxU7AMOkM6nP6JbKs=
 github.com/didiyun/didiyun-go-sdk v0.0.0-20200407082324-9230d53e143f/go.mod h1:J0ltcwoCBFxKo6d6kFEkMzEpQ+jY3e4FSEbWJIpm9Dw=
+github.com/didiyun/didiyun-go-sdk v0.0.0-20200414111039-6eaa5df16e8c h1:Iu279R5AMm01VvGS3+LS+oYMm5T6KL+a8BWyiyXxdOw=
+github.com/didiyun/didiyun-go-sdk v0.0.0-20200414111039-6eaa5df16e8c/go.mod h1:J0ltcwoCBFxKo6d6kFEkMzEpQ+jY3e4FSEbWJIpm9Dw=
 github.com/docker/spdystream v0.0.0-20160310174837-449fdfce4d96/go.mod h1:Qh8CwZgvJUkLughtfhJv5dyTYa91l1fOUCrgjqmcifM=
 github.com/elazarl/goproxy v0.0.0-20180725130230-947c36da3153/go.mod h1:/Zj4wYkgs4iZTTu3o/KG3Itv/qCCa8VVMlb3i9OVuzc=
 github.com/emicklei/go-restful v0.0.0-20170410110728-ff4f55a20633/go.mod h1:otzb+WCGbkyDHkqmQmT5YD2WR4BBwUdeQoFo8l/7tVs=

@@ -22,8 +22,9 @@ const (
 	maxDc2       = 500
 	maxSlb       = 1000
 
-	ebsNotFoundMsg = "找不到指定EBS"
-	slbNotFoundMsg = "删除SLB失败" // TODO: not consistent
+	ebsNotFoundMsg  = "找不到指定EBS"
+	slbNotFoundMsg  = "找不到指定SLB"
+	slbNotFoundCode = 41070 // 查询SLB信息失败
 )
 
 var (
