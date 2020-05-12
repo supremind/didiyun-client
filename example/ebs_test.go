@@ -28,3 +28,19 @@ func ExampleCreateDelete_Ebs() {
 	fmt.Println("Ebs created & deleted ok")
 	// Output: Ebs created & deleted ok
 }
+
+func ExampleExpand_Ebs() {
+	ctx := context.Background()
+	c, e := pkg.New(&pkg.Config{Token: apiToken, Timeout: 5 * time.Second})
+	if e != nil {
+		log.Fatalln(e)
+	}
+	ebs := c.Ebs()
+	uuid := "" // set target ebs
+	if e := ebs.Expand(ctx, uuid, 120); e != nil {
+		log.Fatalln(e)
+	}
+
+	fmt.Println("Ebs expanded ok")
+	// Output: Ebs expanded ok
+}

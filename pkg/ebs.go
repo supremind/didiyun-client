@@ -14,6 +14,7 @@ type EbsClient interface {
 	Delete(ctx context.Context, ebsUUID string) error
 	Attach(ctx context.Context, ebsUUID, dc2Name string) (string, error)
 	Detach(ctx context.Context, ebsUUID string) error
+	Expand(ctx context.Context, ebsUUID string, sizeGB int64) error
 }
 
 type ebsClient struct {
@@ -173,4 +174,27 @@ func (t *ebsClient) Detach(ctx context.Context, ebsUUID string) error {
 		return nil
 	}
 	return fmt.Errorf("failed to detach ebs: %s", job.Result)
+}
+
+func (t *ebsClient) Expand(ctx context.Context, ebsUUID string, sizeGB int64) error {
+	klog.V(4).Infof("expanding ebs %s", ebsUUID)
+	req := &compute.ChangeEbsSizeRequest{
+		Ebs: []*compute.ChangeEbsSizeRequest_Input{{EbsUuid: ebsUUID, Size: sizeGB}},
+	}
+	resp, e := t.cli.ChangeEbsSize(ctx, req)
+	if e != nil {
+		return fmt.Errorf("expand ebs error %w", e)
+	}
+	if resp.Error.Errno != 0 {
+		return fmt.Errorf("expand ebs error %s (%d)", resp.Error.Errmsg, resp.Error.Errno)
+	}
+
+	job, e := t.waitForJob(ctx, resp.Data[0], "", "")
+	if e != nil {
+		return e
+	}
+	if !job.Success {
+		return fmt.Errorf("failed to expand ebs: %s", job.Result)
+	}
+	return nil
 }

@@ -58,3 +58,12 @@ func (t *mockEbsClient) Detach(ctx context.Context, ebsUUID string) error {
 	}
 	return fmt.Errorf("%s not found", ebsUUID)
 }
+
+func (t *mockEbsClient) Expand(ctx context.Context, ebsUUID string, sizeGB int64) error {
+	for _, e := range t.ebs {
+		if ebsUUID == e.id {
+			return nil
+		}
+	}
+	return fmt.Errorf("%s not found", ebsUUID)
+}
