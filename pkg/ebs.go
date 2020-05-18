@@ -191,12 +191,13 @@ func (t *ebsClient) Expand(ctx context.Context, ebsUUID string, sizeGB int64) er
 		klog.V(4).Infof("ebs %s not found", ebsUUID)
 		return nil
 	}
-	if sizeGB<<30 == ebsResp.Data[0].GetSize() {
+	curSize := ebsResp.Data[0].GetSize()
+	if sizeGB<<30 == curSize {
 		klog.V(4).Infof("not expand due to same size %d GiB", sizeGB)
 		return nil
 	}
-	if sizeGB<<30 < ebsResp.Data[0].GetSize() {
-		return fmt.Errorf("can not shrink size")
+	if sizeGB<<30 < curSize {
+		return fmt.Errorf("can not shrink size from %d", curSize)
 	}
 
 	req := &compute.ChangeEbsSizeRequest{
