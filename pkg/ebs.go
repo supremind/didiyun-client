@@ -178,6 +178,28 @@ func (t *ebsClient) Detach(ctx context.Context, ebsUUID string) error {
 
 func (t *ebsClient) Expand(ctx context.Context, ebsUUID string, sizeGB int64) error {
 	klog.V(4).Infof("expanding ebs %s", ebsUUID)
+
+	// get to check size
+	ebsResp, e := t.cli.GetEbsByUuid(ctx, &compute.GetEbsByUuidRequest{EbsUuid: ebsUUID})
+	if e != nil {
+		return fmt.Errorf("get ebs error %w", e)
+	}
+	if ebsResp.Error.Errno != 0 {
+		return fmt.Errorf("get ebs error %s (%d)", ebsResp.Error.Errmsg, ebsResp.Error.Errno)
+	}
+	if len(ebsResp.Data) == 0 {
+		klog.V(4).Infof("ebs %s not found", ebsUUID)
+		return nil
+	}
+	curSize := ebsResp.Data[0].GetSize()
+	if sizeGB<<30 == curSize {
+		klog.V(4).Infof("not expand due to same size %d GiB", sizeGB)
+		return nil
+	}
+	if sizeGB<<30 < curSize {
+		return fmt.Errorf("can not shrink size from %d", curSize)
+	}
+
 	req := &compute.ChangeEbsSizeRequest{
 		Ebs: []*compute.ChangeEbsSizeRequest_Input{{EbsUuid: ebsUUID, Size: sizeGB}},
 	}
