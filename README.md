@@ -5,3 +5,7 @@
 
 # Didiyun Client
 didiyunclient wraps [didiyun-go-sdk](https://github.com/didiyun/didiyun-go-sdk) for common usage.
+
+## Contributors
+- [@kelviN](https://github.com/killwing)
+- [@houz42](https://github.com/houz42)
