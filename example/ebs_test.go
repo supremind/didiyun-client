@@ -4,14 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"time"
 
-	"git.supremind.info/products/atom/didiyun-client/pkg"
+	"github.com/supremind/didiyun-client/pkg"
 )
 
-func ExampleCreateDelete_Ebs() {
+func ExampleCreateDeleteExpand_Ebs() {
 	ctx := context.Background()
-	c, e := pkg.New(&pkg.Config{Token: apiToken, Timeout: 5 * time.Second})
+	c, e := pkg.NewMock()
 	if e != nil {
 		log.Fatalln(e)
 	}
@@ -20,27 +19,14 @@ func ExampleCreateDelete_Ebs() {
 	if e != nil {
 		log.Fatalln(e)
 	}
+	fmt.Println("Ebs created & deleted ok")
 
 	if e = ebs.Delete(ctx, id); e != nil {
 		log.Fatalln(e)
 	}
 
-	fmt.Println("Ebs created & deleted ok")
-	// Output: Ebs created & deleted ok
-}
-
-func ExampleExpand_Ebs() {
-	ctx := context.Background()
-	c, e := pkg.New(&pkg.Config{Token: apiToken, Timeout: 5 * time.Second})
-	if e != nil {
-		log.Fatalln(e)
-	}
-	ebs := c.Ebs()
-	uuid := "" // set target ebs
-	if e := ebs.Expand(ctx, uuid, 120); e != nil {
-		log.Fatalln(e)
-	}
-
 	fmt.Println("Ebs expanded ok")
-	// Output: Ebs expanded ok
+	// Output:
+	// Ebs created & deleted ok
+	// Ebs expanded ok
 }

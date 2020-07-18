@@ -4,14 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"time"
 
-	"git.supremind.info/products/atom/didiyun-client/pkg"
+	"github.com/supremind/didiyun-client/pkg"
 )
 
 func ExampleCreateDelete_Slb() {
 	ctx := context.Background()
-	c, e := pkg.New(&pkg.Config{Token: apiToken, Timeout: 5 * time.Second})
+	c, e := pkg.NewMock()
 	if e != nil {
 		log.Fatalln(e)
 	}
@@ -35,7 +34,7 @@ func ExampleCreateDelete_Slb() {
 
 func ExampleSyncListeners_Slb() {
 	ctx := context.Background()
-	c, e := pkg.New(&pkg.Config{Token: apiToken, Timeout: 5 * time.Second})
+	c, e := pkg.NewMock()
 	if e != nil {
 		log.Fatalln(e)
 	}
@@ -65,7 +64,7 @@ func ExampleSyncListeners_Slb() {
 
 func ExampleSyncListenerMembers_Slb() {
 	ctx := context.Background()
-	c, e := pkg.New(&pkg.Config{Token: apiToken, Timeout: 5 * time.Second})
+	c, e := pkg.NewMock()
 	if e != nil {
 		log.Fatalln(e)
 	}
