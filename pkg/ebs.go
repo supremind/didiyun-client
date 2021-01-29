@@ -11,6 +11,7 @@ import (
 
 type EbsClient interface {
 	Create(ctx context.Context, regionID, zoneID, name, typ string, sizeGB int64) (string, error)
+	Get(ctx context.Context, ebsUUID string) (*compute.EbsInfo, error)
 	Delete(ctx context.Context, ebsUUID string) error
 	Attach(ctx context.Context, ebsUUID, dc2Name string) (string, error)
 	Detach(ctx context.Context, ebsUUID string) error
@@ -21,6 +22,8 @@ type ebsClient struct {
 	cli compute.EbsClient
 	helper
 }
+
+var _ EbsClient = (*ebsClient)(nil)
 
 func (t *ebsClient) Create(ctx context.Context, regionID, zoneID, name, typ string, sizeGB int64) (string, error) {
 	klog.V(4).Infof("creating ebs %s, type %s, size %d GB", name, typ, sizeGB)
@@ -52,6 +55,29 @@ func (t *ebsClient) Create(ctx context.Context, regionID, zoneID, name, typ stri
 		return "", fmt.Errorf("failed to create ebs: %s", job.Result)
 	}
 	return job.ResourceUuid, nil
+}
+
+func (t *ebsClient) Get(ctx context.Context, ebsUUID string) (*compute.EbsInfo, error) {
+	klog.V(4).Infof("get ebs %s", ebsUUID)
+	resp, e := t.cli.GetEbsByUuid(ctx, &compute.GetEbsByUuidRequest{
+		EbsUuid: ebsUUID,
+	})
+	if e != nil {
+		return nil, fmt.Errorf("get ebs by uuid: %w", e)
+	}
+	if resp.Error.Errno != 0 {
+		return nil, fmt.Errorf("get ebs by uuid error %s (%d)", resp.Error.Errmsg, resp.Error.Errno)
+	}
+
+	infos := resp.GetData()
+	if len(infos) == 0 {
+		return nil, fmt.Errorf("get ebs by uuid, got nothing")
+	}
+	if len(infos) > 1 {
+		return nil, fmt.Errorf("get ebs by uuid, got too much: %v", infos)
+	}
+
+	return infos[0], nil
 }
 
 func (t *ebsClient) attachedDevice(ctx context.Context, ebsUUID, dc2Name string) (string, error) {
