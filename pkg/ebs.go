@@ -80,7 +80,7 @@ func (t *ebsClient) Get(ctx context.Context, ebsUUID string) (*compute.EbsInfo, 
 	return infos[0], nil
 }
 
-func (t *ebsClient) attachedDevice(ctx context.Context, ebsUUID, dc2Name string) (string, error) {
+func (t *ebsClient) attachedDevice(ctx context.Context, ebsUUID, dc2Ip string) (string, error) {
 	klog.V(4).Infof("getting ebs %s", ebsUUID)
 	req := &compute.GetEbsByUuidRequest{
 		EbsUuid: ebsUUID,
@@ -107,7 +107,7 @@ func (t *ebsClient) attachedDevice(ctx context.Context, ebsUUID, dc2Name string)
 	klog.V(4).Infof("ebs %s is already attached to %s, device %s", ebsUUID, dc2.GetName(), dn)
 
 	// not attached to target dc2
-	if dc2Name != "" && dc2.GetName() != dc2Name {
+	if dc2Ip != "" && dc2.GetIp() != dc2Ip {
 		return "", nil
 	}
 	// attached to any dc2
@@ -140,9 +140,10 @@ func (t *ebsClient) Delete(ctx context.Context, ebsUUID string) error {
 	return nil
 }
 
-func (t *ebsClient) Attach(ctx context.Context, ebsUUID, dc2Name string) (string, error) {
-	klog.V(4).Infof("attaching ebs %s to dc2 %s", ebsUUID, dc2Name)
-	dc2UUID, e := t.getDc2UUIDByName(ctx, dc2Name)
+func (t *ebsClient) Attach(ctx context.Context, ebsUUID, dc2Ip string) (string, error) {
+	klog.V(4).Infof("attaching ebs %s to dc2 %s", ebsUUID, dc2Ip)
+	// dc2UUID, e := t.getDc2UUIDByName(ctx, dc2Name)
+	dc2UUID, e := t.getDc2UUIDByIp(ctx, dc2Ip)
 	if e != nil {
 		return "", e
 	}
@@ -164,7 +165,8 @@ func (t *ebsClient) Attach(ctx context.Context, ebsUUID, dc2Name string) (string
 	}
 
 	// whether job.Success or not, need check attached device
-	device, e := t.attachedDevice(ctx, ebsUUID, dc2Name)
+	// now check based on getIp ?
+	device, e := t.attachedDevice(ctx, ebsUUID, dc2Ip)
 	if e != nil {
 		return "", e
 	}
