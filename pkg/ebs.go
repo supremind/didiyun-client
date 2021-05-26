@@ -13,7 +13,7 @@ type EbsClient interface {
 	Create(ctx context.Context, regionID, zoneID, name, typ string, sizeGB int64) (string, error)
 	Get(ctx context.Context, ebsUUID string) (*compute.EbsInfo, error)
 	Delete(ctx context.Context, ebsUUID string) error
-	Attach(ctx context.Context, ebsUUID, dc2Name string) (string, error)
+	Attach(ctx context.Context, ebsUUID, dc2Ip string) (string, error)
 	Detach(ctx context.Context, ebsUUID string) error
 	Expand(ctx context.Context, ebsUUID string, sizeGB int64) error
 }

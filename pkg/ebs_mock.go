@@ -9,8 +9,9 @@ import (
 )
 
 type ebsInfo struct {
-	id      string
-	dc2Name string
+	id string
+	// dc2Name string
+	dc2Ip string
 }
 
 type mockEbsClient struct {
@@ -36,8 +37,8 @@ func (t *mockEbsClient) Get(ctx context.Context, ebsUUID string) (*compute.EbsIn
 				Name:    name,
 				EbsUuid: ebsUUID,
 			}
-			if info.dc2Name != "" {
-				ebs.Dc2 = &compute.Dc2Info{Name: info.dc2Name}
+			if info.dc2Ip != "" {
+				ebs.Dc2 = &compute.Dc2Info{Ip: info.dc2Ip}
 			}
 			return ebs, nil
 		}
@@ -56,13 +57,13 @@ func (t *mockEbsClient) Delete(ctx context.Context, ebsUUID string) error {
 	return fmt.Errorf("%s not found", ebsUUID)
 }
 
-func (t *mockEbsClient) Attach(ctx context.Context, ebsUUID, dc2Name string) (string, error) {
+func (t *mockEbsClient) Attach(ctx context.Context, ebsUUID, dc2Ip string) (string, error) {
 	for _, e := range t.ebs {
 		if ebsUUID == e.id {
-			if e.dc2Name != "" && e.dc2Name != dc2Name {
-				return "", fmt.Errorf("%s attached to %s", ebsUUID, e.dc2Name)
+			if e.dc2Ip != "" && e.dc2Ip != dc2Ip {
+				return "", fmt.Errorf("%s attached to %s", ebsUUID, e.dc2Ip)
 			}
-			e.dc2Name = dc2Name
+			e.dc2Ip = dc2Ip
 			return "mock-device", nil
 		}
 	}
@@ -72,7 +73,7 @@ func (t *mockEbsClient) Attach(ctx context.Context, ebsUUID, dc2Name string) (st
 func (t *mockEbsClient) Detach(ctx context.Context, ebsUUID string) error {
 	for _, e := range t.ebs {
 		if ebsUUID == e.id {
-			e.dc2Name = ""
+			e.dc2Ip = ""
 			return nil
 		}
 	}
