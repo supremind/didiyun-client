@@ -17,10 +17,10 @@ import (
 )
 
 const (
-	endpoint     = "open.didiyunapi.com:8080"
-	pollInterval = 3 * time.Second
-	maxDc2       = 500
-	maxSlb       = 1000
+	defaultEndpoint = "open.didiyunapi.com"
+	pollInterval    = 3 * time.Second
+	maxDc2          = 500
+	maxSlb          = 1000
 
 	ebsNotFoundMsg  = "找不到指定EBS"
 	slbNotFoundMsg  = "找不到指定SLB"
@@ -37,8 +37,10 @@ type Client interface {
 }
 
 type Config struct {
-	Token   string
-	Timeout time.Duration
+	Endpoint string
+	Token    string
+	Timeout  time.Duration
+	Insecure bool
 }
 
 type client struct {
@@ -50,15 +52,22 @@ type client struct {
 }
 
 func New(cfg *Config) (Client, error) {
-	cred := oauth.NewOauthAccess(&oauth2.Token{
-		AccessToken: cfg.Token,
-		TokenType:   "bearer",
-	})
-	conn, e := grpc.Dial(endpoint,
-		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})),
-		grpc.WithPerRPCCredentials(cred),
+	if cfg.Endpoint == "" {
+		cfg.Endpoint = defaultEndpoint
+	}
+	opts := []grpc.DialOption{
+		grpc.WithPerRPCCredentials(oauth.NewOauthAccess(&oauth2.Token{
+			AccessToken: cfg.Token,
+			TokenType:   "bearer",
+		})),
 		grpc.WithTimeout(cfg.Timeout),
-	)
+	}
+	if cfg.Insecure {
+		opts = append(opts, grpc.WithInsecure)
+	} else {
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
+	}
+	conn, e := grpc.Dial(cfg.Endpoint, opts...)
 	if e != nil {
 		return nil, e
 	}
